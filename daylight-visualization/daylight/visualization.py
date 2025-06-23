@@ -42,24 +42,25 @@ def create_mercator_heatmap_plotly(input_date: Union[date, datetime],
             lons_flat = lon_grid.flatten()
             daylight_flat = daylight_grid.flatten()
             
-            # Use larger markers with no outline for better blending
-            marker_size = max(2, min(20, 180 / resolution))  # Dynamic size based on resolution
+            # Create smooth heatmap using Scattermapbox with large overlapping markers
+            # This preserves accurate color mapping unlike Densitymapbox
+            marker_size = max(20, min(50, 1000 / resolution))  # Very large for smooth coverage
             
-            fig = go.Figure(data=go.Scattergeo(
+            fig = go.Figure(data=go.Scattermapbox(
                 lat=lats_flat,
                 lon=lons_flat,
                 mode='markers',
                 marker=dict(
                     size=marker_size,
                     color=daylight_flat,
-                    colorscale=[[0, 'rgb(0,0,139)'], [0.25, 'rgb(0,100,200)'], [0.5, 'rgb(255,255,0)'], [0.75, 'rgb(255,165,0)'], [1, 'rgb(255,0,0)']],
+                    colorscale=[[0, 'rgb(0,0,139)'], [0.1, 'rgb(0,50,200)'], [0.3, 'rgb(0,150,255)'], [0.45, 'rgb(100,255,100)'], [0.5, 'rgb(255,255,0)'], [0.55, 'rgb(255,200,0)'], [0.7, 'rgb(255,100,0)'], [0.9, 'rgb(255,0,0)'], [1, 'rgb(200,0,0)']],
                     cmin=0,
                     cmax=24,
                     colorbar=dict(
                         title="Daylight Hours"
                     ),
-                    opacity=0.1,
-                    line=dict(width=0)  # Remove marker outlines
+                    opacity=0.15,
+                    allowoverlap=True,  # Key for smooth blending
                 ),
                 hovertemplate='Latitude: %{lat:.1f}°<br>Longitude: %{lon:.1f}°<br>Daylight: %{marker.color:.1f} hours<extra></extra>',
                 showlegend=False
@@ -67,23 +68,19 @@ def create_mercator_heatmap_plotly(input_date: Union[date, datetime],
             
             fig.update_layout(
                 title=f"Daylight Duration - {input_date.strftime('%B %d, %Y')}",
-                geo=dict(
-                    projection_type='natural earth',
-                    showland=True,
-                    landcolor='rgb(243, 243, 243)',
-                    showocean=True,
-                    oceancolor='rgb(230, 245, 255)',
-                    showlakes=False,  # Simplify background
-                    showrivers=False,
-                    showcountries=True,
-                    countrycolor='rgb(200, 200, 200)',
-                    coastlinecolor='rgb(180, 180, 180)',
-                    showframe=False,
-                    showcoastlines=True
+                mapbox=dict(
+                    style="open-street-map",
+                    center=dict(lat=0, lon=0),
+                    zoom=1
                 ),
                 autosize=True,
                 margin=dict(l=0, r=0, t=40, b=0),
                 height=600
+            )
+            
+            # Configure interaction - disable dragging via config
+            fig.update_layout(
+                dragmode=False
             )
         else:
             # Create regular heatmap
@@ -131,27 +128,20 @@ def create_mercator_heatmap_plotly(input_date: Union[date, datetime],
                 lons_flat = lon_grid.flatten()
                 daylight_flat = daylight_grid.flatten()
                 
-                # Use same dynamic sizing for animation frames
-                marker_size = max(2, min(20, 180 / resolution))
-                
                 frame = go.Frame(
-                    data=[go.Scattergeo(
+                    data=[go.Densitymapbox(
                         lat=lats_flat,
                         lon=lons_flat,
-                        mode='markers',
-                        marker=dict(
-                            size=marker_size,
-                            color=daylight_flat,
-                            colorscale=[[0, 'rgb(0,0,139)'], [0.25, 'rgb(0,100,200)'], [0.5, 'rgb(255,255,0)'], [0.75, 'rgb(255,165,0)'], [1, 'rgb(255,0,0)']],
-                            cmin=0,
-                            cmax=24,
-                            colorbar=dict(
-                                title="Daylight Hours"
-                            ),
-                            opacity=0.1,
-                            line=dict(width=0)
+                        z=daylight_flat,
+                        colorscale=[[0, 'rgb(0,0,139)'], [0.1, 'rgb(0,50,200)'], [0.3, 'rgb(0,150,255)'], [0.45, 'rgb(100,255,100)'], [0.5, 'rgb(255,255,0)'], [0.55, 'rgb(255,200,0)'], [0.7, 'rgb(255,100,0)'], [0.9, 'rgb(255,0,0)'], [1, 'rgb(200,0,0)']],
+                        zmin=0,
+                        zmax=24,
+                        colorbar=dict(
+                            title="Daylight Hours"
                         ),
-                        hovertemplate='Latitude: %{lat:.1f}°<br>Longitude: %{lon:.1f}°<br>Daylight: %{marker.color:.1f} hours<extra></extra>',
+                        opacity=0.6,
+                        radius=30,
+                        hovertemplate='Latitude: %{lat:.1f}°<br>Longitude: %{lon:.1f}°<br>Daylight: %{z:.1f} hours<extra></extra>',
                         showlegend=False
                     )],
                     name=f"Day {day_of_year}",
@@ -166,7 +156,7 @@ def create_mercator_heatmap_plotly(input_date: Union[date, datetime],
                         z=daylight_grid,
                         x=np.arange(-180, 180 + resolution, resolution),
                         y=np.arange(-90, 90 + resolution, resolution),
-                        colorscale=[[0, 'rgb(0,0,139)'], [0.25, 'rgb(0,100,200)'], [0.5, 'rgb(255,255,0)'], [0.75, 'rgb(255,165,0)'], [1, 'rgb(255,0,0)']],
+                        colorscale=[[0, 'rgb(0,0,139)'], [0.1, 'rgb(0,50,200)'], [0.3, 'rgb(0,150,255)'], [0.45, 'rgb(100,255,100)'], [0.5, 'rgb(255,255,0)'], [0.55, 'rgb(255,200,0)'], [0.7, 'rgb(255,100,0)'], [0.9, 'rgb(255,0,0)'], [1, 'rgb(200,0,0)']],
                         zmin=0,
                         zmax=24,
                         colorbar=dict(
@@ -190,27 +180,20 @@ def create_mercator_heatmap_plotly(input_date: Union[date, datetime],
             lons_flat = lon_grid.flatten()
             daylight_flat = daylight_grid.flatten()
             
-            # Use same dynamic sizing for initial animation frame
-            marker_size = max(2, min(20, 180 / resolution))
-            
             fig = go.Figure(
-                data=go.Scattergeo(
+                data=go.Densitymapbox(
                     lat=lats_flat,
                     lon=lons_flat,
-                    mode='markers',
-                    marker=dict(
-                        size=marker_size,
-                        color=daylight_flat,
-                        colorscale=[[0, 'rgb(0,0,139)'], [0.25, 'rgb(0,100,200)'], [0.5, 'rgb(255,255,0)'], [0.75, 'rgb(255,165,0)'], [1, 'rgb(255,0,0)']],
-                        cmin=0,
-                        cmax=24,
-                        colorbar=dict(
-                            title="Daylight Hours"
-                        ),
-                        opacity=0.1,
-                        line=dict(width=0)
+                    z=daylight_flat,
+                    colorscale=[[0, 'rgb(0,0,139)'], [0.1, 'rgb(0,50,200)'], [0.3, 'rgb(0,150,255)'], [0.45, 'rgb(100,255,100)'], [0.5, 'rgb(255,255,0)'], [0.55, 'rgb(255,200,0)'], [0.7, 'rgb(255,100,0)'], [0.9, 'rgb(255,0,0)'], [1, 'rgb(200,0,0)']],
+                    zmin=0,
+                    zmax=24,
+                    colorbar=dict(
+                        title="Daylight Hours"
                     ),
-                    hovertemplate='Latitude: %{lat:.1f}°<br>Longitude: %{lon:.1f}°<br>Daylight: %{marker.color:.1f} hours<extra></extra>',
+                    opacity=0.6,
+                    radius=30,
+                    hovertemplate='Latitude: %{lat:.1f}°<br>Longitude: %{lon:.1f}°<br>Daylight: %{z:.1f} hours<extra></extra>',
                     showlegend=False
                 ),
                 frames=frames
@@ -222,7 +205,7 @@ def create_mercator_heatmap_plotly(input_date: Union[date, datetime],
                     z=daylight_grid,
                     x=np.arange(-180, 180 + resolution, resolution),
                     y=np.arange(-90, 90 + resolution, resolution),
-                    colorscale=[[0, 'rgb(0,0,139)'], [0.25, 'rgb(0,100,200)'], [0.5, 'rgb(255,255,0)'], [0.75, 'rgb(255,165,0)'], [1, 'rgb(255,0,0)']],
+                    colorscale=[[0, 'rgb(0,0,139)'], [0.1, 'rgb(0,50,200)'], [0.3, 'rgb(0,150,255)'], [0.45, 'rgb(100,255,100)'], [0.5, 'rgb(255,255,0)'], [0.55, 'rgb(255,200,0)'], [0.7, 'rgb(255,100,0)'], [0.9, 'rgb(255,0,0)'], [1, 'rgb(200,0,0)']],
                     zmin=0,
                     zmax=24,
                     colorbar=dict(
@@ -237,19 +220,10 @@ def create_mercator_heatmap_plotly(input_date: Union[date, datetime],
         if use_world_map:
             fig.update_layout(
                 title=f"Daylight Duration Animation - {year}",
-                geo=dict(
-                    projection_type='natural earth',
-                    showland=True,
-                    landcolor='rgb(243, 243, 243)',
-                    showocean=True,
-                    oceancolor='rgb(230, 245, 255)',
-                    showlakes=False,
-                    showrivers=False,
-                    showcountries=True,
-                    countrycolor='rgb(200, 200, 200)',
-                    coastlinecolor='rgb(180, 180, 180)',
-                    showframe=False,
-                    showcoastlines=True
+                mapbox=dict(
+                    style="open-street-map",
+                    center=dict(lat=0, lon=0),
+                    zoom=1
                 ),
                 autosize=True,
                 margin=dict(l=0, r=0, t=40, b=0),
