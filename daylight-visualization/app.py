@@ -74,105 +74,30 @@ def main():
     # Show the actual date
     st.sidebar.info(f"📅 **{selected_date.strftime('%B %d')}** (Day {selected_day_of_year})")
     
-    # Show animation status in main area
-    if st.session_state.get('animating', False):
-        direction_text = "Forward" if st.session_state.get('animation_direction', 1) > 0 else "Reverse"
-        st.info(f"🎬 **Animation Active** - Playing {direction_text} | Current: {selected_date.strftime('%B %d')} (Day {selected_day_of_year})")
-    
     # Animation controls
     st.sidebar.markdown("### 🎬 Animation")
     
-    # Animation toggle
-    animate = st.sidebar.checkbox("Enable Animation", value=False)
+    # Animation toggle - now uses Plotly's built-in animation
+    enable_plotly_animation = st.sidebar.checkbox(
+        "Enable Plotly Animation", 
+        value=False,
+        help="Creates smooth client-side animation using Plotly's built-in controls"
+    )
     
-    if animate:
-        # Animation presets
-        st.sidebar.markdown("**Quick Settings:**")
-        col1, col2, col3 = st.sidebar.columns(3)
-        with col1:
-            if st.button("🐌 Slow", key="slow_preset"):
-                st.session_state.animation_speed = 1
-                st.session_state.animation_delay = 1.0
-        with col2:
-            if st.button("🚶 Normal", key="normal_preset"):
-                st.session_state.animation_speed = 7
-                st.session_state.animation_delay = 0.5
-        with col3:
-            if st.button("🏃 Fast", key="fast_preset"):
-                st.session_state.animation_speed = 14
-                st.session_state.animation_delay = 0.2
-        
-        # Initialize animation settings in session state
-        if 'animation_speed' not in st.session_state:
-            st.session_state.animation_speed = 7
-        if 'animation_delay' not in st.session_state:
-            st.session_state.animation_delay = 0.5
-        
-        # Animation settings
-        animation_speed = st.sidebar.slider(
-            "Animation Speed (days per step)",
+    if enable_plotly_animation:
+        # Animation step size
+        animation_step = st.sidebar.slider(
+            "Animation Step (days)",
             min_value=1,
             max_value=30,
-            value=st.session_state.animation_speed,
-            help="How many days to advance per animation step",
-            key="speed_slider"
+            value=7,
+            help="Days between animation frames (smaller = smoother but slower loading)"
         )
         
-        animation_delay = st.sidebar.slider(
-            "Animation Delay (seconds)",
-            min_value=0.1,
-            max_value=2.0,
-            value=st.session_state.animation_delay,
-            step=0.1,
-            help="Delay between animation frames",
-            key="delay_slider"
-        )
-        
-        # Update session state
-        st.session_state.animation_speed = animation_speed
-        st.session_state.animation_delay = animation_delay
-        
-        # Animation controls
-        col1, col2, col3 = st.sidebar.columns(3)
-        with col1:
-            if st.button("▶️ Play", key="play_animation"):
-                st.session_state.animating = True
-                st.session_state.animation_direction = 1
-        with col2:
-            if st.button("⏸️ Pause", key="pause_animation"):
-                st.session_state.animating = False
-        with col3:
-            if st.button("🔄 Reset", key="reset_animation"):
-                st.session_state.day_of_year = 1
-                st.session_state.animating = False
-        
-        # Reverse direction button
-        if st.sidebar.button("🔄 Reverse Direction", key="reverse_animation"):
-            st.session_state.animation_direction = st.session_state.get('animation_direction', 1) * -1
-        
-        # Initialize animation state
-        if 'animating' not in st.session_state:
-            st.session_state.animating = False
-        if 'animation_direction' not in st.session_state:
-            st.session_state.animation_direction = 1
-        
-        # Auto-advance animation
-        if st.session_state.get('animating', False):
-            # Calculate next day
-            next_day = st.session_state.day_of_year + (animation_speed * st.session_state.animation_direction)
-            
-            # Handle wrapping around the year
-            if next_day > 365:
-                next_day = next_day - 365
-            elif next_day < 1:
-                next_day = 365 + next_day
-                
-            st.session_state.day_of_year = next_day
-            
-            # Auto-refresh for animation
-            import time
-            time.sleep(animation_delay)
-            st.rerun()
+        st.sidebar.info("🎬 **Plotly Animation Enabled**\nUse the ▶️ Play button and slider that appear below the chart!")
+        st.sidebar.warning("⚠️ **Date Sync**: The animation shows the full year cycle starting from January 1st. The date slider above shows your selected starting date for the static view.")
+    else:
+        animation_step = 7  # Default value when animation is disabled
     
     # Visualization type selection
     viz_type = st.sidebar.selectbox(
@@ -185,6 +110,13 @@ def main():
         st.header("🌍 Global Daylight Duration Heatmap")
         st.markdown(f"**Date:** {selected_date.strftime('%B %d, %Y')}")
         
+        # Map options
+        use_world_map = st.sidebar.checkbox(
+            "Show World Map Overlay",
+            value=True,
+            help="Overlay daylight data on actual world map geography"
+        )
+        
         # Resolution slider
         resolution = st.sidebar.slider(
             "Map Resolution (degrees)",
@@ -195,18 +127,46 @@ def main():
             help="Lower values = higher resolution (slower)"
         )
         
-        with st.spinner("Generating heatmap..."):
-            fig = create_mercator_heatmap_plotly(selected_date, resolution)
+        with st.spinner("Generating heatmap..." + (" (with animation frames)" if enable_plotly_animation else "")):
+            fig = create_mercator_heatmap_plotly(
+                selected_date, 
+                resolution, 
+                enable_animation=enable_plotly_animation,
+                animation_step=animation_step,
+                use_world_map=use_world_map
+            )
             st.plotly_chart(fig, use_container_width=True)
         
         # Add explanation
-        st.info("""
-        **How to read this map:**
-        - **Dark colors** (purple/blue): Shorter daylight hours
-        - **Bright colors** (yellow/green): Longer daylight hours
-        - **Red**: Maximum daylight (up to 24 hours during polar summer)
-        - Notice how daylight patterns change with the seasons!
-        """)
+        if enable_plotly_animation:
+            st.info("""
+            **How to use the animation:**
+            - Click the **▶️ Play** button below the chart to start the animation
+            - Use the **⏸️ Pause** button to stop
+            - Drag the **slider** to jump to any day of the year
+            - The animation shows the complete yearly cycle (Jan 1 - Dec 31)
+            - Watch how daylight patterns shift dramatically with the seasons!
+            
+            **Map colors:**
+            - **Dark** (purple/blue): Shorter daylight hours
+            - **Bright** (yellow/green): Longer daylight hours  
+            - **Red**: Maximum daylight (24 hours during polar summer)
+            
+            **World Map:** Toggle the world map overlay to see daylight patterns over actual geography with countries, oceans, and coastlines.
+            
+            **Note:** The animation runs independently from the date controls in the sidebar.
+            """)
+        else:
+            st.info("""
+            **How to read this map:**
+            - **Dark colors** (purple/blue): Shorter daylight hours
+            - **Bright colors** (yellow/green): Longer daylight hours
+            - **Red**: Maximum daylight (up to 24 hours during polar summer)
+            
+            **World Map:** Toggle the world map overlay to see daylight patterns over actual geography with countries, oceans, and coastlines.
+            
+            - Enable Plotly Animation in the sidebar to see seasonal changes!
+            """)
     
     elif viz_type == "Latitude Profile":
         st.header("📊 Daylight Duration by Latitude")
@@ -221,8 +181,13 @@ def main():
             help="Select latitude range to display"
         )
         
-        with st.spinner("Generating latitude profile..."):
-            fig = plot_daylight_by_latitude(selected_date, lat_range)
+        with st.spinner("Generating latitude profile..." + (" (with animation frames)" if enable_plotly_animation else "")):
+            fig = plot_daylight_by_latitude(
+                selected_date, 
+                lat_range, 
+                enable_animation=enable_plotly_animation,
+                animation_step=animation_step
+            )
             st.plotly_chart(fig, use_container_width=True)
         
         # Show key statistics
@@ -309,8 +274,13 @@ def main():
                 comparison_lats.append(lat)
         
         if comparison_lats:
-            with st.spinner("Generating comparison plot..."):
-                fig = create_comparison_plot(comparison_lats, selected_date)
+            with st.spinner("Generating comparison plot..." + (" (with animation frames)" if enable_plotly_animation else "")):
+                fig = create_comparison_plot(
+                    comparison_lats, 
+                    selected_date,
+                    enable_animation=enable_plotly_animation,
+                    animation_step=animation_step
+                )
                 st.plotly_chart(fig, use_container_width=True)
             
             # Show comparison table for selected date
@@ -334,7 +304,7 @@ def main():
     **About:** This app calculates daylight duration using astronomical formulas based on the sunrise equation.
     Calculations account for seasonal variations in solar declination and handle polar day/night conditions.
     
-    **Animation:** Enable animation to see how daylight patterns change throughout the year. Great for visualizing seasonal transitions and understanding how latitude affects daylight cycles.
+    **Animation:** Enable Plotly Animation for smooth, interactive visualization of seasonal changes. The animation runs in your browser with built-in play/pause controls and a scrub slider.
     
     **Note:** Times are calculated for sea level and don't account for atmospheric refraction or local terrain.
     """)

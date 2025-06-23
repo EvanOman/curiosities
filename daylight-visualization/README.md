@@ -6,7 +6,7 @@ Interactive visualization of daylight length variations across latitudes and tim
 
 This project provides an interactive web application to explore how daylight duration varies across the globe and throughout the year. It features:
 
-1. **Global heatmap** - Mercator projection showing daylight hours worldwide
+1. **Global heatmap** - Mercator projection showing daylight hours worldwide with optional world map overlay
 2. **Latitude profiles** - Cross-sectional view of daylight vs latitude for any date
 3. **Time series** - Daylight duration over a full year for any latitude
 4. **Location comparison** - Compare multiple locations side-by-side
@@ -41,9 +41,11 @@ This project provides an interactive web application to explore how daylight dur
 ## Usage
 
 ### Global Heatmap
+- **World Map Overlay**: Toggle to see daylight patterns over actual geography with countries, oceans, and coastlines
 - Use date slider to see seasonal changes
 - Adjust resolution for performance vs detail trade-off
 - Notice polar day/night patterns in summer/winter
+- **Geographic Context**: Real world map helps understand how daylight affects different regions
 
 ### Latitude Profile
 - Shows daylight hours as function of latitude for selected date
